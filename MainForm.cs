@@ -4,7 +4,7 @@ namespace GitHubUploader;
 
 public sealed class MainForm : Form
 {
-    private readonly TextBox txtSource = new() { Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right };
+    private readonly RichTextBox rtSource = new() { Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right, ReadOnly = true, Multiline = false, WordWrap = false, ScrollBars = RichTextBoxScrollBars.Horizontal }; // v1.8: 끝부분 굵게
     private readonly Button btnPickFolder = new() { Text = "폴더...", AutoSize = true };
     private readonly TextBox txtToken = new() { UseSystemPasswordChar = true, Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right, PlaceholderText = "ghp_... 또는 브라우저 로그인 사용" };
     private readonly Button btnLoadRepos = new() { Text = "레포 불러오기", AutoSize = true };
@@ -18,6 +18,7 @@ public sealed class MainForm : Form
     private readonly Button btnRefreshFolders = new() { Text = "폴더 새로고침", AutoSize = true };
     private readonly Label lblBranch = new() { AutoSize = true }; // v1.6: 실제 default branch 표시
     private readonly Label lblTargetPath = new() { AutoSize = true }; // v1.7: 선택 중인 대상 경로
+    private readonly CheckBox chkFilesOnly = new() { Text = "폴더 속 파일만", AutoSize = true, Enabled = false }; // v1.8: 체크 시 폴더 안 내용물만 업로드
     private readonly CheckBox chkContextMenu = new() { Text = "탐색기 우클릭 메뉴 등록 (GitHub에 업로드)", AutoSize = true };
     private bool suppressCtxCheck;
     private readonly TextBox txtLog = new() { Multiline = true, ScrollBars = ScrollBars.Vertical, ReadOnly = true, Dock = DockStyle.Fill, BackColor = Color.Black, ForeColor = Color.Lime }; // v1.5: 매트릭스 스타일
@@ -30,7 +31,7 @@ public sealed class MainForm : Form
 
     public MainForm(string sourcePath)
     {
-        Text = "GitHub 업로더 v1.7 (git.exe 의존, 브라우저 로그인)";
+        Text = "GitHub 업로더 v1.8 (git.exe 의존, 브라우저 로그인)";
         Width = 940;
         Height = 760;
         StartPosition = FormStartPosition.CenterScreen;
@@ -56,13 +57,14 @@ public sealed class MainForm : Form
         // --- 원본 행 ---
         var p1 = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true };
         p1.Controls.Add(new Label { Text = "원본:", AutoSize = true, Padding = new Padding(0, 6, 0, 0) });
-        txtSource.Width = 620;
-        txtSource.Text = sourcePath;
-        p1.Controls.Add(txtSource);
+        rtSource.Width = 620;
+        rtSource.Height = TextRenderer.MeasureText("Ag", rtSource.Font).Height + 8;
+        p1.Controls.Add(rtSource);
+        SetSourceText(sourcePath);
         btnPickFolder.Click += (_, _) =>
         {
             using var d = new FolderBrowserDialog();
-            if (d.ShowDialog() == DialogResult.OK) txtSource.Text = d.SelectedPath;
+            if (d.ShowDialog() == DialogResult.OK) SetSourceText(d.SelectedPath);
         };
         p1.Controls.Add(btnPickFolder);
         layout.Controls.Add(p1, 0, 0);
@@ -117,6 +119,7 @@ public sealed class MainForm : Form
         btnUpload.Padding = new Padding(20, 10, 20, 10);
         btnRefreshFolders.Padding = new Padding(20, 10, 20, 10);
         btnUpload.Font = new Font(btnUpload.Font.FontFamily, btnUpload.Font.Size + 2, FontStyle.Bold);
+        p7.Controls.Add(chkFilesOnly); // v1.8: 업로드 버튼 왼쪽
         p7.Controls.Add(btnUpload);
         p7.Controls.Add(btnRefreshFolders);
         layout.Controls.Add(p7, 0, 8);
@@ -131,9 +134,9 @@ public sealed class MainForm : Form
         {
             RestoreWindowBounds(); // v1.5: 마지막 창 크기/위치
             txtToken.Text = TokenStore.Load(); // v1.4: 암호화 저장본, 구 평문은 자동 이관
-            Log("v1.7 준비. '브라우저로 로그인' 또는 PAT 입력 후 '레포 불러오기'를 누르세요.");
-            if (!string.IsNullOrWhiteSpace(txtSource.Text))
-                Log("원본: " + txtSource.Text);
+            Log("v1.8 준비. '브라우저로 로그인' 또는 PAT 입력 후 '레포 불러오기'를 누르세요.");
+            if (!string.IsNullOrWhiteSpace(rtSource.Text))
+                Log("원본: " + rtSource.Text);
             RefreshCtxCheck();
             LoadRecents();
             RefreshRecentRow();
@@ -164,6 +167,23 @@ public sealed class MainForm : Form
     }
 
     private string Token => txtToken.Text.Trim();
+
+    // v1.8: 전체 경로 표시 + 마지막(폴더명/파일명+확장자)만 굵게 + 끝까지 스크롤
+    private void SetSourceText(string path)
+    {
+        string clean = (path ?? "").Trim().Trim('"');
+        rtSource.Text = clean;
+        bool isDir = clean != "" && Directory.Exists(clean);
+        chkFilesOnly.Enabled = isDir;
+        if (!isDir) chkFilesOnly.Checked = false;
+        string t = clean.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        if (t == "") return;
+        int i = Math.Max(t.LastIndexOf(Path.DirectorySeparatorChar), t.LastIndexOf(Path.AltDirectorySeparatorChar));
+        rtSource.Select(i + 1, t.Length - (i + 1));
+        rtSource.SelectionFont = new Font(rtSource.Font, FontStyle.Bold);
+        rtSource.Select(rtSource.TextLength, 0);
+        rtSource.ScrollToCaret();
+    }
 
     private static string UiFile => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GitHubUploader", "window.txt");
 
@@ -461,7 +481,7 @@ public sealed class MainForm : Form
 
     private async Task UploadAsync()
     {
-        string source = txtSource.Text.Trim().Trim('"');
+        string source = rtSource.Text.Trim().Trim('"');
         var repo = SelectedRepo;
         string targetPath = SelectedTargetPath();
         string commitMsg = txtCommit.Text.Trim();
@@ -503,7 +523,7 @@ public sealed class MainForm : Form
             string destBase = string.IsNullOrEmpty(targetPath)
                 ? workRoot
                 : Path.Combine(workRoot, targetPath.Replace('/', Path.DirectorySeparatorChar));
-            GitHelper.CopySourceInto(source, destBase, log);
+            GitHelper.CopySourceInto(source, destBase, log, chkFilesOnly.Checked); // v1.8: 폴더 속 파일만 옵션
 
             await GitHelper.RunGitAsync(new[] { "add", "-A" }, workRoot, log);
             string status = await GitHelper.RunGitAsync(new[] { "status", "--porcelain" }, workRoot, log);

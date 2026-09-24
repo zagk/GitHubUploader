@@ -71,7 +71,7 @@ public static class GitHelper
         };
     }
 
-    public static void CopySourceInto(string sourcePath, string destDir, Action<string> log)
+    public static void CopySourceInto(string sourcePath, string destDir, Action<string> log, bool filesOnly = false)
     {
         if (File.Exists(sourcePath))
         {
@@ -82,10 +82,18 @@ public static class GitHelper
         }
         else if (Directory.Exists(sourcePath))
         {
-            string folderName = new DirectoryInfo(sourcePath.TrimEnd(Path.DirectorySeparatorChar)).Name;
-            string dest = Path.Combine(destDir, folderName);
-            int skipped = CopyDir(sourcePath, dest);
-            log?.Invoke($"폴더 복사: {sourcePath} -> {dest}" + (skipped > 0 ? $" (.git {skipped}개 제외)" : ""));
+            if (filesOnly) // v1.8: 폴더 자체가 아니라 속 내용물만
+            {
+                int skipped = CopyChildren(sourcePath, destDir);
+                log?.Invoke($"폴더 속 파일만 복사: {sourcePath} -> {destDir}" + (skipped > 0 ? $" (.git {skipped}개 제외)" : ""));
+            }
+            else
+            {
+                string folderName = new DirectoryInfo(sourcePath.TrimEnd(Path.DirectorySeparatorChar)).Name;
+                string dest = Path.Combine(destDir, folderName);
+                int skipped = CopyDir(sourcePath, dest);
+                log?.Invoke($"폴더 복사: {sourcePath} -> {dest}" + (skipped > 0 ? $" (.git {skipped}개 제외)" : ""));
+            }
         }
         else
         {
@@ -95,6 +103,12 @@ public static class GitHelper
 
     // v1.6: .git 제어 폴더는 복사 제외 (클론 손상 방지). 제외 개수를 반환.
     private static int CopyDir(string src, string dst)
+    {
+        Directory.CreateDirectory(dst);
+        return CopyChildren(src, dst);
+    }
+
+    private static int CopyChildren(string src, string dst)
     {
         int skipped = 0;
         Directory.CreateDirectory(dst);

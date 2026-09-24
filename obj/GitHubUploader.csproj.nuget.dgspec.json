@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\zagk\\Documents\\Default Project\\GitHubUploader_v1.7\\GitHubUploader.csproj": {}
+    "C:\\Users\\zagk\\Documents\\Default Project\\GitHubUploader_v1.8\\GitHubUploader.csproj": {}
   },
   "projects": {
-    "C:\\Users\\zagk\\Documents\\Default Project\\GitHubUploader_v1.7\\GitHubUploader.csproj": {
-      "version": "1.7.0",
+    "C:\\Users\\zagk\\Documents\\Default Project\\GitHubUploader_v1.8\\GitHubUploader.csproj": {
+      "version": "1.8.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\zagk\\Documents\\Default Project\\GitHubUploader_v1.7\\GitHubUploader.csproj",
+        "projectUniqueName": "C:\\Users\\zagk\\Documents\\Default Project\\GitHubUploader_v1.8\\GitHubUploader.csproj",
         "projectName": "GitHubUploader",
-        "projectPath": "C:\\Users\\zagk\\Documents\\Default Project\\GitHubUploader_v1.7\\GitHubUploader.csproj",
+        "projectPath": "C:\\Users\\zagk\\Documents\\Default Project\\GitHubUploader_v1.8\\GitHubUploader.csproj",
         "packagesPath": "C:\\Users\\zagk\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\zagk\\Documents\\Default Project\\GitHubUploader_v1.7\\obj\\",
+        "outputPath": "C:\\Users\\zagk\\Documents\\Default Project\\GitHubUploader_v1.8\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
