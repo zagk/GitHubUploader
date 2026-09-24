@@ -1,0 +1,2 @@
+C:\Users\zagk\Documents\Default Project\GitHubUploader_v1.7\publish\GitHubUploader.pdb
+C:\Users\zagk\Documents\Default Project\GitHubUploader_v1.7\publish\GitHubUploader.exe
