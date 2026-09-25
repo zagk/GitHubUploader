@@ -6,7 +6,7 @@
   "compilationOptions": {},
   "targets": {
     ".NETCoreApp,Version=v8.0": {
-      "GitHubUploader/1.12.0": {
+      "GitHubUploader/1.14.0": {
         "runtime": {
           "GitHubUploader.dll": {}
         }
@@ -14,7 +14,7 @@
     }
   },
   "libraries": {
-    "GitHubUploader/1.12.0": {
+    "GitHubUploader/1.14.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

@@ -18,7 +18,7 @@ public sealed class MainForm : Form
     private readonly Button btnUpload = new() { Text = "선택한 폴더에 업로드", AutoSize = true };
     private readonly Button btnRefreshFolders = new() { Text = "폴더 새로고침", AutoSize = true };
     private readonly Label lblBranch = new() { AutoSize = true }; // v1.6: 실제 default branch 표시
-    private readonly Label lblTargetPath = new() { AutoSize = true }; // v1.7: 선택 중인 대상 경로
+    private readonly Label lblTargetPath = new() { Dock = DockStyle.Fill, BackColor = Color.Black, ForeColor = Color.Lime, Margin = new Padding(0, 5, 0, 5) }; // v1.13: 매트릭스 스타일 대상 표시줄
     private readonly CheckBox chkFilesOnly = new() { Text = "폴더 속 파일만", AutoSize = true, Enabled = false }; // v1.8: 체크 시 폴더 안 내용물만 업로드
     private readonly CheckBox chkContextMenu = new() { Text = "탐색기 우클릭 메뉴 등록 (GitHub에 업로드)", AutoSize = true };
     private bool suppressCtxCheck;
@@ -32,7 +32,7 @@ public sealed class MainForm : Form
 
     public MainForm(string sourcePath)
     {
-        Text = "GitHub 업로더 v1.12 (git.exe 의존, 브라우저 로그인)";
+        Text = "GitHub 업로더 v1.14 (git.exe 의존, 브라우저 로그인)";
         Width = 940;
         Height = 830; // v1.12: 기본 창을 키워 리스트 공간 확보
         MinimumSize = new Size(860, 640); // v1.11: 너무 줄여서 창이 깨지는 것 방지
@@ -143,7 +143,7 @@ public sealed class MainForm : Form
         {
             RestoreWindowBounds(); // v1.5: 마지막 창 크기/위치
             txtToken.Text = TokenStore.Load(); // v1.4: 암호화 저장본, 구 평문은 자동 이관
-            Log("v1.12 준비. '브라우저로 로그인' 또는 PAT 입력 후 '레포 불러오기'를 누르세요.");
+            Log("v1.14 준비. '브라우저로 로그인' 또는 PAT 입력 후 '레포 불러오기'를 누르세요.");
             if (!string.IsNullOrWhiteSpace(rtSource.Text))
                 Log("원본: " + rtSource.Text);
             RefreshCtxCheck();
@@ -188,6 +188,7 @@ public sealed class MainForm : Form
         string t = clean.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         if (t == "") return;
         int i = Math.Max(t.LastIndexOf(Path.DirectorySeparatorChar), t.LastIndexOf(Path.AltDirectorySeparatorChar));
+        txtCommit.Text = t.Substring(i + 1); // v1.14: 폴더면 폴더명, 파일이면 파일명 자동 입력
         rtSource.Select(i + 1, t.Length - (i + 1));
         rtSource.SelectionFont = new Font(rtSource.Font, FontStyle.Bold);
         rtSource.Select(rtSource.TextLength, 0);
