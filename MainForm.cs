@@ -4,10 +4,8 @@ namespace GitHubUploader;
 
 public sealed class MainForm : Form
 {
-    private readonly TextBox txtSourceInput = new() { Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right }; // v1.9: 원본 입력칸
+    private readonly RichTextBox rtSource = new() { Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right, ReadOnly = true, Multiline = false, WordWrap = false, ScrollBars = RichTextBoxScrollBars.Horizontal }; // v1.10: v1.8 스타일 단일 원본칸
     private readonly Button btnPickFile = new() { Text = "파일", AutoSize = true }; // v1.9: 파일 선택
-    private readonly RichTextBox rtSourcePath = new() { Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right, ReadOnly = true, Multiline = false, WordWrap = false, ScrollBars = RichTextBoxScrollBars.Horizontal }; // v1.9: 경로 표시 전용
-    private bool suppressSrcInput;
     private readonly Button btnPickFolder = new() { Text = "폴더", AutoSize = true };
     private readonly TextBox txtToken = new() { UseSystemPasswordChar = true, Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right, PlaceholderText = "ghp_... 또는 브라우저 로그인 사용" };
     private readonly Button btnLoadRepos = new() { Text = "레포 불러오기", AutoSize = true };
@@ -28,15 +26,16 @@ public sealed class MainForm : Form
 
     private List<RepoInfo> allRepos = new();
     private readonly FlowLayoutPanel recentsPanel = new() { Dock = DockStyle.Fill, AutoSize = true };
-    private readonly SplitContainer split = new() { Dock = DockStyle.Fill }; // v1.5: 필드로 승격 (50:50 시작위치용)
+    private readonly SplitContainer split = new() { Dock = DockStyle.Fill, MinimumSize = new Size(0, 220) }; // v1.11: 창이 줄어도 리스트/폴더는 최소 높이 보장
     private List<string> recents = new();
     private static string RecentFile => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GitHubUploader", "recent.txt");
 
     public MainForm(string sourcePath)
     {
-        Text = "GitHub 업로더 v1.9 (git.exe 의존, 브라우저 로그인)";
+        Text = "GitHub 업로더 v1.12 (git.exe 의존, 브라우저 로그인)";
         Width = 940;
-        Height = 760;
+        Height = 830; // v1.12: 기본 창을 키워 리스트 공간 확보
+        MinimumSize = new Size(860, 640); // v1.11: 너무 줄여서 창이 깨지는 것 방지
         StartPosition = FormStartPosition.CenterScreen;
         var baseFont = Font;
         Font = new Font(baseFont.FontFamily, baseFont.Size + 3); // v1.3: 전체 폰트 +3
@@ -45,25 +44,25 @@ public sealed class MainForm : Form
 
         var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, Padding = new Padding(10) };
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // source
-        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // source path display
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // token
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // search
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // recents
-        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 38)); // repos+folders
-        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // branch label
+        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); // repos+folders (v1.11: 남은 공간 전부)
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // branch label (v1.12: 원위치)
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // target path
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // commit
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // buttons
-        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 30)); // log
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 150)); // log (v1.12: 200→150, 리스트에 양보)
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // bottom checkbox
         Controls.Add(layout);
+        AttachDrop(this); // v1.10: 드래그 앤 드랍 (폴더/파일)
 
         // --- 원본 행 ---
         var p1 = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true };
         p1.Controls.Add(new Label { Text = "원본:", AutoSize = true, Padding = new Padding(0, 6, 0, 0) });
-        txtSourceInput.Width = 500;
-        txtSourceInput.TextChanged += (_, _) => { if (!suppressSrcInput) RefreshSourceDisplay(); };
-        p1.Controls.Add(txtSourceInput);
+        rtSource.Width = 560;
+        rtSource.Height = TextRenderer.MeasureText("Ag", rtSource.Font).Height + 8;
+        p1.Controls.Add(rtSource);
         btnPickFolder.Click += (_, _) =>
         {
             using var d = new FolderBrowserDialog();
@@ -77,14 +76,6 @@ public sealed class MainForm : Form
         };
         p1.Controls.Add(btnPickFile);
         layout.Controls.Add(p1, 0, 0);
-
-        // v1.9: 원본 밑에 전체 경로 표시 (마지막만 굵게)
-        var pSrc = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true };
-        pSrc.Controls.Add(new Label { Text = "경로:", AutoSize = true, Padding = new Padding(0, 6, 0, 0) });
-        rtSourcePath.Width = 700;
-        rtSourcePath.Height = TextRenderer.MeasureText("Ag", rtSourcePath.Font).Height + 8;
-        pSrc.Controls.Add(rtSourcePath);
-        layout.Controls.Add(pSrc, 0, 1);
         SetSourceText(sourcePath);
 
         // --- 토큰 행 ---
@@ -98,14 +89,14 @@ public sealed class MainForm : Form
         p2.Controls.Add(btnBrowserLogin);
         p2.Controls.Add(lblAccount);
         p2.Controls.Add(btnLoadRepos);
-        layout.Controls.Add(p2, 0, 2);
+        layout.Controls.Add(p2, 0, 1);
 
         txtSearch.TextChanged += (_, _) => ApplyFilter();
-        layout.Controls.Add(txtSearch, 0, 3);
+        layout.Controls.Add(txtSearch, 0, 2);
 
         // --- 최근 레포 (v1.3: 검색 밑, 최대 5개) ---
         recentsPanel.Controls.Add(new Label { Text = "최근:", AutoSize = true, Padding = new Padding(0, 6, 0, 0) });
-        layout.Controls.Add(recentsPanel, 0, 4);
+        layout.Controls.Add(recentsPanel, 0, 3);
 
         // --- 레포 + 폴더 (v1.3: 전체 트리 1회 조회, 폴더 아이콘) ---
         var folderIcons = new ImageList { ImageSize = new Size(16, 16), ColorDepth = ColorDepth.Depth32Bit };
@@ -115,20 +106,20 @@ public sealed class MainForm : Form
         split.Panel2.Controls.Add(treeTarget);
         lstRepos.SelectedIndexChanged += async (_, _) => await OnRepoSelectedAsync();
         treeTarget.AfterSelect += (_, _) => RefreshTargetPath(); // v1.7: 폴더 클릭 시 대상 경로 갱신
-        layout.Controls.Add(split, 0, 5);
+        layout.Controls.Add(split, 0, 4);
 
         lblBranch.Text = "브랜치: main  |  왼쪽에서 레포 선택 → 오른쪽에서 대상 폴더 선택(루트=/) → 커밋 메시지 입력 → 업로드";
-        layout.Controls.Add(lblBranch, 0, 6);
+        layout.Controls.Add(lblBranch, 0, 5);
 
         // v1.7: 선택 중인 대상 경로 (commit 바로 위, 굵게)
         lblTargetPath.Text = "대상: (레포 미선택)";
-        layout.Controls.Add(lblTargetPath, 0, 7);
+        layout.Controls.Add(lblTargetPath, 0, 6);
 
         var p6 = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true };
         p6.Controls.Add(new Label { Text = "Commit:", AutoSize = true, Padding = new Padding(0, 6, 0, 0) });
         txtCommit.Width = 700;
         p6.Controls.Add(txtCommit);
-        layout.Controls.Add(p6, 0, 8);
+        layout.Controls.Add(p6, 0, 7);
 
         var p7 = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true };
         btnUpload.Click += async (_, _) => await UploadAsync();
@@ -140,21 +131,21 @@ public sealed class MainForm : Form
         p7.Controls.Add(chkFilesOnly); // v1.8: 업로드 버튼 왼쪽
         p7.Controls.Add(btnUpload);
         p7.Controls.Add(btnRefreshFolders);
-        layout.Controls.Add(p7, 0, 9);
+        layout.Controls.Add(p7, 0, 8);
 
-        layout.Controls.Add(txtLog, 0, 10);
+        layout.Controls.Add(txtLog, 0, 9);
 
         // v1.3: 우클릭 체크박스는 맨아래, 폰트 그대로
-        layout.Controls.Add(chkContextMenu, 0, 11);
+        layout.Controls.Add(chkContextMenu, 0, 10);
         chkContextMenu.CheckedChanged += (_, _) => OnContextMenuToggled();
 
         Load += async (_, _) =>
         {
             RestoreWindowBounds(); // v1.5: 마지막 창 크기/위치
             txtToken.Text = TokenStore.Load(); // v1.4: 암호화 저장본, 구 평문은 자동 이관
-            Log("v1.9 준비. '브라우저로 로그인' 또는 PAT 입력 후 '레포 불러오기'를 누르세요.");
-            if (!string.IsNullOrWhiteSpace(txtSourceInput.Text))
-                Log("원본: " + txtSourceInput.Text);
+            Log("v1.12 준비. '브라우저로 로그인' 또는 PAT 입력 후 '레포 불러오기'를 누르세요.");
+            if (!string.IsNullOrWhiteSpace(rtSource.Text))
+                Log("원본: " + rtSource.Text);
             RefreshCtxCheck();
             LoadRecents();
             RefreshRecentRow();
@@ -186,29 +177,41 @@ public sealed class MainForm : Form
 
     private string Token => txtToken.Text.Trim();
 
-    // v1.9: 입력칸 설정 + 밑줄 경로 표시(마지막만 굵게) 갱신
+    // v1.10: v1.8 스타일 단일 원본칸 (전체+마지막 굵게+끝 스크롤)
     private void SetSourceText(string path)
     {
-        suppressSrcInput = true;
-        try { txtSourceInput.Text = (path ?? "").Trim().Trim('"'); }
-        finally { suppressSrcInput = false; }
-        RefreshSourceDisplay();
-    }
-
-    private void RefreshSourceDisplay()
-    {
-        string clean = txtSourceInput.Text.Trim().Trim('"');
-        rtSourcePath.Text = clean;
+        string clean = (path ?? "").Trim().Trim('"');
+        rtSource.Text = clean;
         bool isDir = clean != "" && Directory.Exists(clean);
         chkFilesOnly.Enabled = isDir;
         if (!isDir) chkFilesOnly.Checked = false;
         string t = clean.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         if (t == "") return;
         int i = Math.Max(t.LastIndexOf(Path.DirectorySeparatorChar), t.LastIndexOf(Path.AltDirectorySeparatorChar));
-        rtSourcePath.Select(i + 1, t.Length - (i + 1));
-        rtSourcePath.SelectionFont = new Font(rtSourcePath.Font, FontStyle.Bold);
-        rtSourcePath.Select(rtSourcePath.TextLength, 0);
-        rtSourcePath.ScrollToCaret();
+        rtSource.Select(i + 1, t.Length - (i + 1));
+        rtSource.SelectionFont = new Font(rtSource.Font, FontStyle.Bold);
+        rtSource.Select(rtSource.TextLength, 0);
+        rtSource.ScrollToCaret();
+    }
+
+    // v1.10: 창 어디에 떨어뜨려도 폴더/파일 받음 (첫 번째만 사용)
+    private void AttachDrop(Control c)
+    {
+        c.AllowDrop = true;
+        c.DragEnter += (_, e) =>
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop)) e.Effect = DragDropEffects.Copy;
+        };
+        c.DragDrop += (_, e) =>
+        {
+            if (e.Data.GetData(DataFormats.FileDrop) is string[] ps && ps.Length > 0)
+            {
+                SetSourceText(ps[0]);
+                Log("드랍: " + ps[0]);
+                if (ps.Length > 1) Log($"{ps.Length}개 중 첫 번째만 사용합니다.");
+            }
+        };
+        foreach (Control ch in c.Controls) AttachDrop(ch);
     }
 
     private static string UiFile => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GitHubUploader", "window.txt");
@@ -507,7 +510,7 @@ public sealed class MainForm : Form
 
     private async Task UploadAsync()
     {
-        string source = txtSourceInput.Text.Trim().Trim('"');
+        string source = rtSource.Text.Trim().Trim('"');
         var repo = SelectedRepo;
         string targetPath = SelectedTargetPath();
         string commitMsg = txtCommit.Text.Trim();
