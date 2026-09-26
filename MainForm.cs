@@ -1,4 +1,5 @@
 using Microsoft.Win32;
+using System.Diagnostics;
 
 namespace GitHubUploader;
 
@@ -17,6 +18,7 @@ public sealed class MainForm : Form
     private readonly TextBox txtCommit = new() { Text = "upload via right-click", Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right };
     private readonly Button btnUpload = new() { Text = "선택한 폴더에 업로드", AutoSize = true };
     private readonly Button btnRefreshFolders = new() { Text = "폴더 새로고침", AutoSize = true };
+    private readonly Button btnFolderLink = new() { Text = "폴더 링크", AutoSize = true }; // v1.15: GitHub 페이지 열기
     private readonly Label lblBranch = new() { AutoSize = true }; // v1.6: 실제 default branch 표시
     private readonly Label lblTargetPath = new() { Dock = DockStyle.Fill, BackColor = Color.Black, ForeColor = Color.Lime, Margin = new Padding(0, 5, 0, 5) }; // v1.13: 매트릭스 스타일 대상 표시줄
     private readonly CheckBox chkFilesOnly = new() { Text = "폴더 속 파일만", AutoSize = true, Enabled = false }; // v1.8: 체크 시 폴더 안 내용물만 업로드
@@ -32,7 +34,7 @@ public sealed class MainForm : Form
 
     public MainForm(string sourcePath)
     {
-        Text = "GitHub 업로더 v1.14 (git.exe 의존, 브라우저 로그인)";
+        Text = "GitHub 업로더 v1.15 (git.exe 의존, 브라우저 로그인)";
         Width = 940;
         Height = 830; // v1.12: 기본 창을 키워 리스트 공간 확보
         MinimumSize = new Size(860, 640); // v1.11: 너무 줄여서 창이 깨지는 것 방지
@@ -47,12 +49,12 @@ public sealed class MainForm : Form
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // token
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // search
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // recents
-        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); // repos+folders (v1.11: 남은 공간 전부)
+        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 38)); // repos+folders (v1.15: v1.9 비율로 복귀)
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // branch label (v1.12: 원위치)
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // target path
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // commit
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // buttons
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 150)); // log (v1.12: 200→150, 리스트에 양보)
+        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 30)); // log (v1.15: v1.9 비율로 복귀)
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // bottom checkbox
         Controls.Add(layout);
         AttachDrop(this); // v1.10: 드래그 앤 드랍 (폴더/파일)
@@ -131,6 +133,8 @@ public sealed class MainForm : Form
         p7.Controls.Add(chkFilesOnly); // v1.8: 업로드 버튼 왼쪽
         p7.Controls.Add(btnUpload);
         p7.Controls.Add(btnRefreshFolders);
+        btnFolderLink.Click += (_, _) => OpenFolderLink();
+        p7.Controls.Add(btnFolderLink);
         layout.Controls.Add(p7, 0, 8);
 
         layout.Controls.Add(txtLog, 0, 9);
@@ -143,7 +147,7 @@ public sealed class MainForm : Form
         {
             RestoreWindowBounds(); // v1.5: 마지막 창 크기/위치
             txtToken.Text = TokenStore.Load(); // v1.4: 암호화 저장본, 구 평문은 자동 이관
-            Log("v1.14 준비. '브라우저로 로그인' 또는 PAT 입력 후 '레포 불러오기'를 누르세요.");
+            Log("v1.15 준비. '브라우저로 로그인' 또는 PAT 입력 후 '레포 불러오기'를 누르세요.");
             if (!string.IsNullOrWhiteSpace(rtSource.Text))
                 Log("원본: " + rtSource.Text);
             RefreshCtxCheck();
@@ -498,6 +502,23 @@ public sealed class MainForm : Form
             if (q == "" || r.FullName.Contains(q, StringComparison.OrdinalIgnoreCase))
                 lstRepos.Items.Add(r);
         }
+    }
+
+    // v1.15: 선택 중인 레포/폴더의 GitHub 페이지를 브라우저로 열기
+    private void OpenFolderLink()
+    {
+        var repo = SelectedRepo;
+        if (repo == null) { MessageBox.Show("레포를 선택하세요."); return; }
+        string t = SelectedTargetPath();
+        string url = string.IsNullOrEmpty(t)
+            ? $"https://github.com/{repo.Owner}/{repo.Name}"
+            : $"https://github.com/{repo.Owner}/{repo.Name}/tree/{CurrentBranch()}/{t}";
+        try
+        {
+            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+            Log("브라우저 열기: " + url);
+        }
+        catch (Exception ex) { Log("브라우저 열기 실패: " + ex.Message); MessageBox.Show(ex.Message); }
     }
 
     private RepoInfo SelectedRepo => lstRepos.SelectedItem as RepoInfo;

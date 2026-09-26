@@ -150,13 +150,13 @@
     "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
-    "version": "1.14.0",
+    "version": "1.15.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\zagk\\Documents\\Default Project\\GitHubUploader_v1.14\\GitHubUploader.csproj",
+      "projectUniqueName": "C:\\Users\\zagk\\Documents\\Default Project\\GitHubUploader_v1.15\\GitHubUploader.csproj",
       "projectName": "GitHubUploader",
-      "projectPath": "C:\\Users\\zagk\\Documents\\Default Project\\GitHubUploader_v1.14\\GitHubUploader.csproj",
+      "projectPath": "C:\\Users\\zagk\\Documents\\Default Project\\GitHubUploader_v1.15\\GitHubUploader.csproj",
       "packagesPath": "C:\\Users\\zagk\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\zagk\\Documents\\Default Project\\GitHubUploader_v1.14\\obj\\",
+      "outputPath": "C:\\Users\\zagk\\Documents\\Default Project\\GitHubUploader_v1.15\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
